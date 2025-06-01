@@ -45,7 +45,7 @@ const Login = () => {
     } catch (error) {
       toast.error(error.message);
     }
-  };
+  };   
   
   const handle2FA = async (error) => {
     const resolver = getMultiFactorResolver(auth, error);

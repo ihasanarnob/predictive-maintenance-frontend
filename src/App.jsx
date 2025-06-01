@@ -15,11 +15,13 @@ import About from "./pages/About/About";
 import Footer from "./components/Footer/Footer";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Toaster } from 'react-hot-toast';
 import SubmitReview from "./components/SubmitReview/SubmitReview";
 
 const App = () => {
   return (
     <Router>
+      <Toaster position="top-center" reverseOrder={false} />
       <Navbar />
       <ToastContainer position="top-right" autoClose={3000} />
       <Routes>
