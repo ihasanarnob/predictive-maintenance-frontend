@@ -9,7 +9,6 @@ import {
   FaMobileAlt,
   FaClock,
   FaChargingStation,
-  FaExclamationTriangle,
 } from "react-icons/fa";
 
 const ManualInput = () => {
@@ -29,7 +28,7 @@ const ManualInput = () => {
     brand: "",
     model: "",
     os: "",
-    age: "",
+    deviceAge: "",
     batteryCycleCount: "",
     batteryHealth: "",
     fastCharging: "",
@@ -44,7 +43,7 @@ const ManualInput = () => {
     ramUsage: "",
     // 
     overheating: false,
-    dropHistory: "",
+    dropHistory: false,
     waterDamage: false,
     sensorIssues: false,
     batteryBulging: false,
@@ -78,6 +77,7 @@ const ManualInput = () => {
     e.preventDefault();
     navigate("/insights", { state: formData });
   };
+
 
 
 
@@ -277,7 +277,8 @@ const ManualInput = () => {
               <option value="4-6h">4–6 hrs</option>
               <option value=">6h">6+ hrs</option>
             </select>
-                        <select name="chargeFrequency" value={formData.chargeFrequency} onChange={handleChange} className="input">
+            
+            <select name="chargeFrequency" value={formData.chargeFrequency} onChange={handleChange} className="input">
               <option value="">Charging Frequency</option>
               <option value="1/day">Once per day</option>
               <option value="2/day">Twice per day</option>

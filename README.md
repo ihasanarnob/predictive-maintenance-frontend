@@ -1,70 +1,206 @@
-# Getting Started with Create React App
+import React, { useRef, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import html2pdf from "html2pdf.js";
+import { Download, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Doughnut } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+import logo from "../../assets/Predictive_Maintenance.png";
+import StatusBadge from "../../components/StatusBadge";
 
-## Available Scripts
+ChartJS.register(ArcElement, Tooltip, Legend);
 
-In the project directory, you can run:
+const Section = ({ icon, title, children }) => (
+<motion.section
+className="bg-white rounded-xl shadow-md p-6 border"
+initial={{ opacity: 0, y: 20 }}
+whileInView={{ opacity: 1, y: 0 }}
+transition={{ duration: 0.4 }}
+viewport={{ once: true }}
 
-### `npm start`
+>
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+    <h2 className="text-xl font-bold flex items-center gap-2 mb-3 text-blue-800">
+      <span className="text-2xl">{icon}</span> {title}
+    </h2>
+    <div>{children}</div>
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+</motion.section>
+);
 
-### `npm test`
+const MiniChart = ({ label, value }) => {
+const data = {
+labels: [label, "Remaining"],
+datasets: [
+{
+data: [value, 100 - value],
+backgroundColor: [value >= 80 ? "#22c55e" : value >= 50 ? "#facc15" : "#ef4444", "#e5e7eb"],
+borderWidth: 1,
+},
+],
+};
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+return (
+<div className="flex flex-col items-center">
+<div className="w-24 h-24">
+<Doughnut data={data} options={{ cutout: "70%" }} />
+</div>
+<p className="text-sm mt-2 text-gray-600">{label}: {value}%</p>
+</div>
+);
+};
 
-### `npm run build`
+const Insights = () => {
+const location = useLocation();
+const navigate = useNavigate();
+const reportRef = useRef();
+const [data, setData] = useState(null);
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+useEffect(() => {
+const fromState = location.state;
+if (fromState) {
+localStorage.setItem("insightData", JSON.stringify(fromState));
+setData(fromState);
+} else {
+const stored = localStorage.getItem("insightData");
+if (stored) setData(JSON.parse(stored));
+}
+}, [location.state]);
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+if (!data) {
+return (
+<div className="flex flex-col items-center justify-center text-center min-h-screen pt-28 px-4">
+<p className="text-2xl text-gray-600">No data found. Please input device details first.</p>
+<button
+className="mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+onClick={() => navigate("/manual-input")} >
+Go to Manual Input
+</button>
+</div>
+);
+}
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+const downloadPDF = () => {
+html2pdf().set({
+margin: 0.5,
+filename: `${data.brand}-insight-report.pdf`,
+image: { type: "jpeg", quality: 0.98 },
+html2canvas: { scale: 2 },
+jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+}).from(reportRef.current).save();
+};
 
-### `npm run eject`
+const getSuggestions = () => {
+const s = [];
+if (+data.batteryHealth < 80) s.push("Battery below 80%. Consider replacement.");
+if (data.chargesOvernight === "yes") s.push("Avoid overnight charging.");
+if (data.overheating) s.push("Overheating detected. Close background apps.");
+if ((data.previousRepairs || []).length >= 3) s.push("Frequent repairs suggest wear. Consider upgrade.");
+if (+data.storageUsage > 85 || +data.ramUsage > 85) s.push("High usage. Optimize apps or reset.");
+if (data.dropHistory === "frequent" || data.waterDamage === "yes") s.push("Potential physical damage risks.");
+if (data.sensorIssues || data.batteryBulging || data.buttonsNotWorking) s.push("Hardware issues detected.");
+return s.length ? s : ["Your device is healthy. Keep monitoring periodically."];
+};
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+const getDeviceStatus = () => {
+const battery = +data.batteryHealth;
+const ram = +data.ramUsage;
+const storage = +data.storageUsage;
+const { overheating, dropHistory, waterDamage, sensorIssues, batteryBulging, screenCracked, buttonsNotWorking } = data;
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+    const critical = [
+      battery < 50, storage > 90, ram > 90,
+      overheating, dropHistory === "frequent", waterDamage === "yes",
+      sensorIssues, batteryBulging, screenCracked, buttonsNotWorking,
+    ];
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+    const attention = [battery < 70, storage > 80, ram > 80];
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+    if (critical.some(Boolean)) return "Critical";
+    if (attention.some(Boolean)) return "Needs Attention";
+    return "Good";
 
-## Learn More
+};
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+return (
+<div className="max-w-6xl mx-auto px-4 sm:px-6 py-16 space-y-10">
+<motion.div
+className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+initial={{ opacity: 0, y: -20 }}
+animate={{ opacity: 1, y: 0 }} >
+<h1 className="text-4xl font-extrabold text-blue-900">📊 Device Health Insights</h1>
+<div className="flex flex-wrap gap-3 items-center">
+<StatusBadge status={getDeviceStatus()} />
+<button onClick={() => { localStorage.removeItem("insightData"); navigate("/manual-input"); }}
+className="flex items-center gap-2 px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600 transition">
+<Trash2 size={18} /> Clear Data
+</button>
+<button onClick={downloadPDF}
+            className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 transition">
+<Download size={18} /> Download PDF
+</button>
+</div>
+</motion.div>
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+      <div ref={reportRef} className="space-y-8">
+        <motion.div className="flex justify-between items-center border-b pb-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <img src={logo} alt="Logo" className="h-10" />
+          <p className="text-sm text-gray-400">Generated by Predictive Maintenance</p>
+        </motion.div>
 
-### Code Splitting
+        {/* Device Info */}
+        <Section icon="📱" title="Device Info">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-gray-700">
+            <p><b>Brand:</b> {data.brand}</p>
+            <p><b>Model:</b> {data.model}</p>
+            <p><b>OS:</b> {data.os}</p>
+            <p><b>Age:</b> {data.age} months</p>
+            <p><b>RAM:</b> {data.totalRam} GB</p>
+            <p><b>Storage:</b> {data.totalStorage} GB</p>
+            <p><b>Screen Time/Day:</b> {data.screenTimeDaily} hrs</p>
+            <p><b>Charging Frequency:</b> {data.chargingFrequency}</p>
+            <p><b>Software Status:</b> {data.softwareStatus}</p>
+          </div>
+        </Section>
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+        {/* Charts Section */}
+        <Section icon="📈" title="Usage Overview">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+            <MiniChart label="Battery" value={+data.batteryHealth} />
+            <MiniChart label="RAM" value={+data.ramUsage} />
+            <MiniChart label="Storage" value={+data.storageUsage} />
+          </div>
+        </Section>
 
-### Analyzing the Bundle Size
+        {/* Repair History */}
+        <Section icon="🛠️" title="Repair History">
+          <ul className="list-disc pl-5 text-sm text-gray-700">
+            {(data.previousRepairs || []).length > 0
+              ? data.previousRepairs.map((item, i) => <li key={i}>{item}</li>)
+              : <li>No previous repairs reported.</li>}
+          </ul>
+        </Section>
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+        {/* Suggestions */}
+        <Section icon="💡" title="Maintenance Suggestions">
+          <ul className="list-disc pl-5 text-sm text-green-800">
+            {getSuggestions().map((tip, i) => <li key={i}>{tip}</li>)}
+          </ul>
+        </Section>
 
-### Making a Progressive Web App
+        {/* Footer */}
+        <footer className="text-center pt-6 mt-6 text-sm text-gray-400 border-t">
+          © {new Date().getFullYear()} Predictive Maintenance App
+        </footer>
+      </div>
+    </div>
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+);
+};
 
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+export default Insights;

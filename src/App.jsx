@@ -7,6 +7,7 @@ import ManualInput from "./pages/ManualInput/ManualInput";
 import Insights from "./pages/Insights/Insights";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
+import VerifyPhone from "./pages/VerifyPhone/VerifyPhone";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar/Navbar";
 import Settings from "./pages/Settings/Settings";
@@ -28,6 +29,7 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify-phone" element={<VerifyPhone />} />
         <Route path="/about" element={<About />} />
         <Route path="/submit-review" element={<SubmitReview />} />
         <Route
